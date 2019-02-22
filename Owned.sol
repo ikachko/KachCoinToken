@@ -5,7 +5,7 @@ contract Owned {
     address private _adminAddress;
     address private _portalAddress;
 
-    constructor() {
+    constructor() internal {
         _ownerAddress = msg.sender;
         _adminAddress = msg.sender;
         _portalAddress = msg.sender;

@@ -2,8 +2,13 @@ pragma solidity ^0.5.2;
 
 import "./ERC20.sol";
 import "./Owned.sol";
+import "./Crowdsale.sol";
 
-contract KachToken is ERC20, Owned {
+contract KachToken is Crowdsale, Owned {
+    string constant public symbol;
+    string constant public name;
+    string constant public decimals;
+
 
     address private _contractOwnerAddress;
     address private _contractAdminAddress;
@@ -19,23 +24,56 @@ contract KachToken is ERC20, Owned {
     address[] private _whitelistInvestorAddresses;
     address[] private _notInWhitelistInvestorAddresses;
 
-    uint256 _ethPrice = 600;
+    uint256 private _ethPrice = 600;
 
-    uint256 _ICOTokensAmount = 300000000;
-    uint256 _teamTokensAmount = 80000000;
-    uint256 _advisorTokensAmount = 50000000;
-    uint256 _earlyInvestorsTokensAmount = 20000000;
-    uint256 _reservedTokensAmount = 50000000;
+
+    uint256 private _ICOTokensAmount = 300000000;
+    uint256 private _teamTokensAmount = 80000000;
+    uint256 private _advisorTokensAmount = 50000000;
+    uint256 private _earlyInvestorsTokensAmount = 20000000;
+    uint256 private _reservedTokensAmount = 50000000;
+
+    uint128 private _tokensPerEth = 3000;
+    uint private _icoStartTime;
+    bool private _icoStarted;
+
+    // Projected sales (Soft Caps)
+    uint private _privateSaleSoftCap = 6000000;
+    uint private _preSaleSoftCap = 5000000;
+    uint private _icoSoftCap = 10000000;
+
+    bool private _tokenTransferEnabled = true;
+    bool private _contractActivated;
+
+
+    // Total amount of ether raised
+    uint amountRaised = 0;
+
+    modifier onlyContractActivated() {
+        require(_contractOwner == true);
+        _;
+    }
+
+    modifier onlyTokenTransferEnabled() {
+        require(_tokenTransferEnabled);
+        _;
+    }
 
     // Construction function
-    constructor() external {
+    constructor() public onlyOwner {
         _contractOwner = msg.sender;
         _totalSupply = 500000000;
+        symbol = "KHT";
+        name = "KachToken";
+        decimals = 18;
+
+        _mint(msg.sender, _totalSupply);
     }
 
     // Payable function to distribute token
-    function() external payable {
-
+    function() external payable onlyContractActivated onlyTokenTransferEnabled {
+        uint weiAmount = msg.value;
+        _issueToken(msg.sender, weiAmount);
     }
 
     // Get current state of sales campaign
@@ -43,88 +81,8 @@ contract KachToken is ERC20, Owned {
 
     }
 
-    // To distribute token to private investor
-    function _issueTokenForPrivateInvestor() private {
-
-    }
-
-    // To distribute token to normal investors joined presales
-    function _issueTokenForPresale() private {
-
-    }
-
-    // To distribute token to normal investors joined ICO
-    function _issueTokenForICO() private {
-
-    }
-
     // To track invested amount of Ether of investors not competed KYC
     function _trackdownInvestedEther() private {
-
-    }
-
-    // To distribute token to investor and transfer ETH to our wallet
-    function _issueToken() private {
-
-    }
-
-    // To add new addresses to whitelist
-    function addToWhitelist(address[] _whiteListAddresses) public onlyOwnerAdminPortal {
-
-    }
-
-    // To remove addresses from whitelist
-    function removeFromWhitelist(address[] _whiteListAddresses) public onlyOwnerAdminPortal {
-
-    }
-
-    // To add new addresses to private list
-    function addPrivateInvestor(address[] _privateInvestorAddresses) public onlyOwnerAdminPortal {
-
-    }
-
-    // To remove addreses from private list
-    function removePrivateInvestor(address[] _privateInvestorAddresses) public onlyOwnerAdminPortal {
-
-    }
-
-    // To start private sales
-    function startPrivateSale() public onlyOwnerAdmin {
-
-    }
-
-    // To start presales
-    function startPreSale() public onlyOwnerAdmin {
-
-    }
-
-    // To end presales
-    function endPreSale() public onlyOwnerAdmin {
-
-    }
-
-    // To start ICO
-    function startICO() public onlyOwnerAdmin {
-
-    }
-
-    // To end ICO
-    function endICO() public onlyOwnerAdmin {
-
-    }
-
-    // To set price before starting private sales
-    function setPrivateSalePrice() public onlyOwnerAdmin {
-
-    }
-
-    // To set price before starting presales
-    function setPreSalePrice() public onlyOwnerAdmin {
-
-    }
-
-    // To set standart price before starting ICO
-    function setICOPrice() public onlyOwnerAdmin {
 
     }
 
@@ -135,17 +93,17 @@ contract KachToken is ERC20, Owned {
 
     // To activate contract
     function activateContract() public onlyOwner {
-
+        _contractActivated = true;
     }
 
     // To deactivate contract
     function deactivateContract() public onlyOwner {
-
+        _contractActivated = false;
     }
 
     // To enable transferring of token
     function enableTokenTransfer() public onlyOwner{
-
+        _tokenTransferEnabled = true;
     }
 
     // To change the ETH wallet
@@ -199,6 +157,4 @@ contract KachToken is ERC20, Owned {
     function allocateReservedToken() public onlyOwnerAdmin {
 
     }
-    }
-
 }
