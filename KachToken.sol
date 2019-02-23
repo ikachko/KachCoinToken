@@ -14,8 +14,9 @@ contract KachToken is Crowdsale, Owned {
     address private _contractAdminAddress;
     address private _contractPortalAddress;
 
-    address private _founderAddress;
 
+    address private _seedInvestorAddress;
+    address private _advisorAddress;
     address private _fundKeeperAddress;
     address private _teamAddress;
     address private _reservedAddress;
@@ -28,7 +29,11 @@ contract KachToken is Crowdsale, Owned {
 
 
     uint256 private _ICOTokensAmount = 300000000;
-    uint256 private _teamTokensAmount = 80000000;
+    // uint256 private _teamTokensAmount = 80000000;
+
+    uint256 private _founderTokensAmount = 50000000;
+    uint256 private _teamTokensAmount = 30000000;
+
     uint256 private _advisorTokensAmount = 50000000;
     uint256 private _earlyInvestorsTokensAmount = 20000000;
     uint256 private _reservedTokensAmount = 50000000;
@@ -45,9 +50,9 @@ contract KachToken is Crowdsale, Owned {
     bool private _tokenTransferEnabled = true;
     bool private _contractActivated;
 
-
-    // Total amount of ether raised
-    uint amountRaised = 0;
+    bool private seedInvestorTokensAllocated = false;
+    bool private foundersTokensAllocated = false;
+    bool private advisorTokensAllocated = false;
 
     modifier onlyContractActivated() {
         require(_contractOwner == true);
@@ -67,7 +72,7 @@ contract KachToken is Crowdsale, Owned {
         name = "KachToken";
         decimals = 18;
 
-        _mint(msg.sender, _totalSupply);
+        _mint(_contractOwner, _totalSupply);
     }
 
     // Payable function to distribute token
@@ -82,7 +87,7 @@ contract KachToken is Crowdsale, Owned {
     }
 
     // To track invested amount of Ether of investors not competed KYC
-    function _trackdownInvestedEther() private {
+    function _trackdownInvestedEther() private returns (uint256) {
 
     }
 
@@ -140,17 +145,23 @@ contract KachToken is Crowdsale, Owned {
 
     // To allocate tokens to founder
     function allocateTokenForFounder() public onlyOwnerAdmin {
-
+        require(now <= (_icoStartTime + 12 minutes));
+        require(_teamAddress != address(0));
+        _approveAndTransfer(_founderAddress, _founderTokensAmount);
     }
 
     // To allocate tokens to team
     function allocateTokenForTeam() public onlyOwnerAdmin {
-
+        require(now <= (_icoStartTime + 12 minutes));
+        require(_teamAddress != address(0));
+        _approveAndTransfer(_teamAddress, _teamTokensAmount);
     }
 
     // To move all tokens remaining after ICO to external address
-    function moveAllAvailableToken() public onlyOwnerAdmin {
-
+    function moveAllAvailableToken(address _newAddress) public onlyOwnerAdmin {
+        require(_newAddress != address(0));
+        remainingTokens = _totalSupply.sub(balanceOf[_contractOwner]);
+        _approveAndTransfer(_newAddress, remainingTokens);
     }
 
     // To allocate reserved token to external address

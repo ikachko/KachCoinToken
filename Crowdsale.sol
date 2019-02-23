@@ -8,8 +8,10 @@ contract Actors is Owned {
 
     mapping (address => bool) internal isPrivateInvestor;
     mapping (address => bool) internal isInWhiteList;
-    mapping (address => uint256) internal others;
 
+    mapping (address => bool) internal notVerificated;
+    mapping (address => uint256) internal others;
+    address[] internal othersAddresses;
 
      // To add new addresses to whitelist
     function addToWhitelist(address[] memory _whiteListAddresses) public onlyOwnerAdminPortal {
@@ -46,10 +48,6 @@ contract Actors is Owned {
             }
         }
     }
-
-    function nonVerificatedTransfer(address _investor, uint256 _weiAmount) internal onlyOwner {
-        others[_investor] = others[_investor].add(_weiAmount);
-    }
 }
 
 contract Crowdsale is Owned, Actors, ERC20 {
@@ -67,8 +65,29 @@ contract Crowdsale is Owned, Actors, ERC20 {
     address private _teamAddress;
     address private _reservedAddress;
 
-    uint private tokenPriceInWei = 334000000000000;
+    uint private tokenPriceInWei = 334000 finney;
+    uint private tokenPrivateSalePriceInWei = 217100 finney;
+    uint private tokenPreSalePriceInWei = 250500 finney;
+    uint private tokenICOPhaseOnePriceInWei = 283900 finney;
+    uint private tokenICOPhaseTwoPriceInWei = 300600 finney;
 
+    uint private privateSaleTokensIssued = 0;
+    uint private privateSaleTokensCap = 48000000;
+
+    uint private preSaleTokensIssued = 0;
+    uint private preSaleTokensCap = 32500000;
+
+    uint private ICOPhaseOneTokensIssued = 0;
+    uint private ICOPhaseOneTokensCap = 60000000;
+
+    uint private ICOPhaseTwoTokensIssued = 0;
+    uint private ICOPhaseTwoTokensCap = 55000000;
+
+    uint private ICOPhaseThreeTokensIssued = 0;
+    uint private ICOPhaseThreeTokensCap = 50000000;
+
+    uint private futureDonationsTokensIssued = 0;
+    uint private futureDonationsTokensCap = 54000000;
 
     // Rounds :
     // ICO First Phase
@@ -84,21 +103,23 @@ contract Crowdsale is Owned, Actors, ERC20 {
     address private _tokenAddress;
     uint256 private _fundingGoal;
 
-
-    // Bonuses coefficients
-    uint private _privateSaleBonus = 60;
-    uint private _preSaleBonus = 30;
-    uint private _ICOFirstPhaseBonus = 20;
-    uint private _ICOSecondPhaseBonus = 10;
-
-
-
     uint256 _icoStartTime;
 
     bool _icoStarted;
 
     bool _isPrivateSaleNow;
     bool _isPreSaleNow;
+
+    uint GAS_LIMIT = 4000000;
+
+    // Total amount of ether raised
+    uint private amountRaised = 0;
+
+
+    function printWei() public pure returns (uint) {
+        uint256 amount = 334 szabo;
+        return amount;
+    }
 
     constructor() public onlyOwner {
         _icoCompleted = false;
@@ -142,73 +163,113 @@ contract Crowdsale is Owned, Actors, ERC20 {
     }
 
     // To set price before starting private sales
-    function setPrivateSalePrice() public onlyOwnerAdmin {
-        // Nope
+    function setPrivateSalePrice(uint256 _newPriceInWei) public onlyOwnerAdmin {
+        tokenPrivateSalePriceInWei = _newPriceInWei;
     }
 
     // To set price before starting presales
-    function setPreSalePrice() public onlyOwnerAdmin {
-        // Nope
+    function setPreSalePrice(uint256 _newPriceInWei) public onlyOwnerAdmin {
+        tokenPreSalePriceInWei = _newPriceInWei;
     }
 
     // To set standart price before starting ICO
-    function setICOPrice() public onlyOwnerAdmin {
-        // Nope
+    function setICOPrice(uint256 _newPriceInWei) public onlyOwnerAdmin {
+        tokenPriceInWei = _newPriceInWei;
     }
 
-    function _applyBonus(uint256 _tokenAmount, uint256 _bonus) private pure returns (uint256) {
-        uint256 _resultToken = _tokenAmount +  (_tokenAmount.mul(_bonus)).div(100);
-        return _resultToken;
+    function returnEther(address _investor, uint256 _weiAmount) public payable onlyOwner {
+        // require(address(this).balance >= _weiAmount);
+        // _investor.transfer.gas(GAS_LIMIT)(_weiAmount);
     }
 
     // To distribute token to private investor
-    function _issueTokenForPrivateInvestor(address _investor, uint256 _tokenAmount) private {
-        uint256 _tokenAmountWithBonus = _applyBonus(_tokenAmount, _privateSaleBonus);
-
-        _approveAndTransfer(_investor, _tokenAmountWithBonus);
+    function _issueTokenForPrivateInvestor(address _investor, uint256 _weiAmount) private payable {
+        uint256 _tokenAmountWithBonus = _weiAmount.div(tokenPrivateSalePriceInWei);
+        if (privateSaleTokensIssued + _tokenAmountWithBonus <= privateSaleTokensCap) {
+            _approveAndTransfer(_investor, _tokenAmountWithBonus);
+            privateSaleTokensIssued = privateSaleTokensIssued.add(_tokenAmountWithBonus);
+            amountRaised = amountRaised.add(_weiAmount);
+        }
+        else {
+            returnEther(_investor, _weiAmount);
+        }
     }
 
     // To distribute token to normal investors joined presales
-    function _issueTokenForPresale(address _investor, uint256 _tokenAmount) private {
-        uint256 _tokenAmountWithBonus = _applyBonus(_tokenAmount, _preSaleBonus);
-
-        _approveAndTransfer(_investor, _tokenAmountWithBonus);
+    function _issueTokenForPresale(address _investor, uint256 _weiAmount) private {
+        uint256 _tokenAmountWithBonus = _weiAmount.div(tokenPreSalePriceInWei);
+        if (preSaleTokensIssued + _tokenAmountWithBonus <= preSaleTokensCap) {
+            _approveAndTransfer(_investor, _tokenAmountWithBonus);
+            preSaleTokensIssued = preSaleTokensIssued.add(_tokenAmountWithBonus);
+            amountRaised = amountRaised.add(_weiAmount);
+        }
     }
 
     // To distribute token to normal investors joined ICO
-    function _issueTokenForICO(address _investor, uint256 _tokenAmount) private {
+    function _issueTokenForICO(address _investor, uint256 _weiAmount) private {
         uint256 _tokenAmountWithBonus;
 
         if (isICOPhaseOne()) {
-            _tokenAmountWithBonus = _applyBonus(_tokenAmount, _ICOFirstPhaseBonus);
+            _tokenAmountWithBonus = _weiAmount.div(tokenICOPhaseOnePriceInWei);
+            if (ICOPhaseOneTokensIssued + _tokenAmountWithBonus <= ICOPhaseOneTokensCap) {
+                _approveAndTransfer(_investor, _tokenAmountWithBonus);
+                ICOPhaseOneTokensIssued = ICOPhaseOneTokensIssued.add(_tokenAmountWithBonus);
+                amountRaised = amountRaised.add(_weiAmount);
+            }
+            else {
+                returnEther(_investor, _weiAmount);
+            }
         }
         else if (isICOPhaseTwo()) {
-            _tokenAmountWithBonus = _applyBonus(_tokenAmount, _ICOSecondPhaseBonus);
+            _tokenAmountWithBonus = _weiAmount.div(tokenICOPhaseTwoPriceInWei);
+            if (ICOPhaseTwoTokensIssued + _tokenAmountWithBonus <= ICOPhaseTwoTokensCap) {
+                _approveAndTransfer(_investor, _tokenAmountWithBonus);
+                ICOPhaseTwoTokensIssued = ICOPhaseTwoTokensIssued.add(_tokenAmountWithBonus);
+                amountRaised = amountRaised.add(_weiAmount);
+            }
+            else {
+                returnEther(_investor, _weiAmount);
+            }
         }
         else {
-            _tokenAmountWithBonus = _tokenAmount;
+            _tokenAmountWithBonus = _weiAmount.div(tokenPriceInWei);
+            if (ICOPhaseThreeTokensIssued + _tokenAmountWithBonus <= ICOPhaseThreeTokensCap) {
+                _approveAndTransfer(_investor, _tokenAmountWithBonus);
+                ICOPhaseThreeTokensIssued = ICOPhaseThreeTokensIssued.add(_tokenAmountWithBonus);
+                amountRaised = amountRaised.add(_weiAmount);
+            }
+            else {
+                returnEther(_investor, _weiAmount);
+            }
         }
-        _approveAndTransfer(_investor, _tokenAmountWithBonus);
     }
 
+    function nonVerificatedTransfer(address _investor, uint256 _weiAmount) internal onlyOwner {
+        others[_investor] = others[_investor].add(_weiAmount);
+        if (notVerificated[_investor] == false) {
+            notVerificated[_investor] = true;
+            othersAddresses.append(_investor);
+        }
+    }
+
+
     // To distribute token to investor and transfer ETH to our wallet
-    function _issueToken(address _investor, uint256 _weiAmount) private {
-        uint256 _tokenAmount = _weiAmount.div(tokenPriceInWei);
-        // uint256 _change = _weiAmount.mod(tokenPriceInWei);
+    function _issueToken(address _investor, uint256 _weiAmount) private payable {
 
         if (isPrivateSaleNow() && isPrivateInvestor[_investor]) {
-            _issueTokenForPrivateInvestor(_investor, _tokenAmount);
+            _issueTokenForPrivateInvestor(_investor, _weiAmount);
         }
         else if (isPreSaleNow() && isInWhiteList[_investor]) {
-            _issueTokenForPresale(_investor, _tokenAmount);
+            _issueTokenForPresale(_investor, _weiAmount);
         }
         else if (isICOStarted()) {
             if (isInWhiteList[_investor]) {
-                _issueTokenForICO(_investor, _tokenAmount);
+                _issueTokenForICO(_investor, _weiAmount);
             }
             else {
                 nonVerificatedTransfer(_investor, _weiAmount);
-                _approveAndTransfer(_investor, _tokenAmount);
+                uint256 tokens = _weiAmount.div(tokenPriceInWei);
+                _approveAndTransfer(_investor, tokens);
             }
         }
     }
