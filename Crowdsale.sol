@@ -13,39 +13,32 @@ contract Actors is Owned {
     mapping (address => uint256) internal others;
     address[] internal othersAddresses;
 
+
      // To add new addresses to whitelist
-    function addToWhitelist(address[] memory _whiteListAddresses) public onlyOwnerAdminPortal {
-        for (uint256 i = 0; i < _whiteListAddresses.length; i++) {
-            if (_whiteListAddresses[i] != address(0)) {
-                isInWhiteList[_whiteListAddresses[i]] = true;
-            }
+    function addToWhitelist(address _whiteListAddress) public onlyOwnerAdminPortal {
+        if (_whiteListAddress != address(0)) {
+            isInWhiteList[_whiteListAddress] = true;
         }
     }
 
     // To remove addresses from whitelist
-    function removeFromWhitelist(address[] memory _whiteListAddresses) public onlyOwnerAdminPortal {
-        for (uint256 i = 0; i < _whiteListAddresses.length; i++) {
-            if (_whiteListAddresses[i] != address(0)) {
-                isInWhiteList[_whiteListAddresses[i]] = false;
-            }
+    function removeFromWhitelist(address _whiteListAddress) public onlyOwnerAdminPortal {
+        if (_whiteListAddress != address(0)) {
+            isInWhiteList[_whiteListAddress] = false;
         }
     }
 
     // To add new addresses to private list
-    function addPrivateInvestor(address[] memory _privateInvestorAddresses) public onlyOwnerAdminPortal {
-        for (uint256 i = 0; i < _privateInvestorAddresses.length; i++) {
-            if (_privateInvestorAddresses[i] != address(0)) {
-                isPrivateInvestor[_privateInvestorAddresses[i]] = true;
-            }
+    function addPrivateInvestor(address _privateInvestorAddress) public onlyOwnerAdminPortal {
+        if (_privateInvestorAddress != address(0)) {
+            isPrivateInvestor[_privateInvestorAddress] = true;
         }
     }
 
     // To remove addreses from private list
-    function removePrivateInvestor(address[] memory _privateInvestorAddresses) public onlyOwnerAdminPortal {
-        for (uint256 i = 0; i < _privateInvestorAddresses.length; i++) {
-            if (_privateInvestorAddresses[i] != address(0)) {
-                isPrivateInvestor[_privateInvestorAddresses[i]] = false;
-            }
+    function removePrivateInvestor(address _privateInvestorAddress) public onlyOwnerAdminPortal {
+        if (_privateInvestorAddress != address(0)) {
+            isPrivateInvestor[_privateInvestorAddress] = false;
         }
     }
 }
@@ -65,11 +58,11 @@ contract Crowdsale is Owned, Actors, ERC20 {
     address private _teamAddress;
     address private _reservedAddress;
 
-    uint private tokenPriceInWei = 334000 finney;
-    uint private tokenPrivateSalePriceInWei = 217100 finney;
-    uint private tokenPreSalePriceInWei = 250500 finney;
-    uint private tokenICOPhaseOnePriceInWei = 283900 finney;
-    uint private tokenICOPhaseTwoPriceInWei = 300600 finney;
+    uint private tokenPriceInWei = 334000000000000 wei;
+    uint private tokenPrivateSalePriceInWei = 217100000000000 wei;
+    uint private tokenPreSalePriceInWei = 250500000000000 wei;
+    uint private tokenICOPhaseOnePriceInWei = 283900000000000 wei;
+    uint private tokenICOPhaseTwoPriceInWei = 300600000000000 wei;
 
     uint private privateSaleTokensIssued = 0;
     uint private privateSaleTokensCap = 48000000;
@@ -105,10 +98,9 @@ contract Crowdsale is Owned, Actors, ERC20 {
 
     uint256 _icoStartTime;
 
-    bool _icoStarted;
-
-    bool _isPrivateSaleNow;
-    bool _isPreSaleNow;
+    bool internal _icoStarted;
+    bool internal _isPrivateSaleNow;
+    bool internal _isPreSaleNow;
 
     uint GAS_LIMIT = 4000000;
 
@@ -121,9 +113,10 @@ contract Crowdsale is Owned, Actors, ERC20 {
         return amount;
     }
 
-    constructor() public onlyOwner {
+    constructor() Owned() public {
         _icoCompleted = false;
         _contractOwnerAddress = msg.sender;
+        approve(_contractOwnerAddress, 500000000);
     }
 
     /*
@@ -177,20 +170,22 @@ contract Crowdsale is Owned, Actors, ERC20 {
         tokenPriceInWei = _newPriceInWei;
     }
 
-    function returnEther(address _investor, uint256 _weiAmount) public payable onlyOwner {
+    function returnEther(address _investor, uint256 _weiAmount) public payable {
         // require(address(this).balance >= _weiAmount);
         // _investor.transfer.gas(GAS_LIMIT)(_weiAmount);
     }
 
     // To distribute token to private investor
-    function _issueTokenForPrivateInvestor(address _investor, uint256 _weiAmount) private payable {
+    function _issueTokenForPrivateInvestor(address _investor, uint256 _weiAmount) public  {
         uint256 _tokenAmountWithBonus = _weiAmount.div(tokenPrivateSalePriceInWei);
+
         if (privateSaleTokensIssued + _tokenAmountWithBonus <= privateSaleTokensCap) {
             _approveAndTransfer(_investor, _tokenAmountWithBonus);
             privateSaleTokensIssued = privateSaleTokensIssued.add(_tokenAmountWithBonus);
             amountRaised = amountRaised.add(_weiAmount);
         }
         else {
+            // revert();
             returnEther(_investor, _weiAmount);
         }
     }
@@ -244,34 +239,43 @@ contract Crowdsale is Owned, Actors, ERC20 {
         }
     }
 
-    function nonVerificatedTransfer(address _investor, uint256 _weiAmount) internal onlyOwner {
+    function nonVerificatedTransfer(address _investor, uint256 _weiAmount) internal {
         others[_investor] = others[_investor].add(_weiAmount);
         if (notVerificated[_investor] == false) {
             notVerificated[_investor] = true;
-            othersAddresses.append(_investor);
+            othersAddresses.push(_investor);
         }
     }
 
 
     // To distribute token to investor and transfer ETH to our wallet
-    function _issueToken(address _investor, uint256 _weiAmount) private payable {
+    function _issueToken(address _investor, uint256 _weiAmount) internal {
+        // nonVerificatedTransfer(_investor, _weiAmount);
+        // uint256 tokens = _weiAmount.div(tokenPriceInWei);
+        // _approveAndTransfer(_investor, tokens);
 
         if (isPrivateSaleNow() && isPrivateInvestor[_investor]) {
             _issueTokenForPrivateInvestor(_investor, _weiAmount);
         }
         else if (isPreSaleNow() && isInWhiteList[_investor]) {
-            _issueTokenForPresale(_investor, _weiAmount);
+             _issueTokenForPresale(_investor, _weiAmount);
         }
         else if (isICOStarted()) {
             if (isInWhiteList[_investor]) {
-                _issueTokenForICO(_investor, _weiAmount);
+                 _issueTokenForICO(_investor, _weiAmount);
             }
-            else {
-                nonVerificatedTransfer(_investor, _weiAmount);
-                uint256 tokens = _weiAmount.div(tokenPriceInWei);
-                _approveAndTransfer(_investor, tokens);
+             else {
+                 nonVerificatedTransfer(_investor, _weiAmount);
+                 uint256 tokens = _weiAmount.div(tokenPriceInWei);
+                 _approveAndTransfer(_investor, tokens);
             }
         }
+        else {
+            nonVerificatedTransfer(_investor, _weiAmount);
+            uint256 tokens = _weiAmount.div(tokenPriceInWei);
+            _approveAndTransfer(_investor, tokens);
+        }
+
     }
 
     // To start private sales
@@ -289,9 +293,9 @@ contract Crowdsale is Owned, Actors, ERC20 {
         _isPreSaleNow = false;
     }
 
-    function _approveAndTransfer(address _investor, uint256 _tokenAmount) private {
-        _approve(_contractOwnerAddress, _investor, _tokenAmount);
-        _transfer(_contractOwnerAddress, _investor, _tokenAmount);
+    function _approveAndTransfer(address _investor, uint256 _tokenAmount) internal returns (uint256) {
+        _balances[_contractOwnerAddress] = _balances[_contractOwnerAddress].sub(_tokenAmount);
+        _balances[_investor] = _balances[_investor].add(_tokenAmount);
     }
 
     function isPrivateSaleNow() private view returns (bool) {

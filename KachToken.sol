@@ -4,11 +4,10 @@ import "./ERC20.sol";
 import "./Owned.sol";
 import "./Crowdsale.sol";
 
-contract KachToken is Crowdsale, Owned {
-    string constant public symbol;
-    string constant public name;
-    string constant public decimals;
-
+contract KachToken is Crowdsale {
+    string constant public symbol = "KHT";
+    string constant public name = "KachToken";
+    int constant public decimals = 18;
 
     address private _contractOwnerAddress;
     address private _contractAdminAddress;
@@ -20,6 +19,7 @@ contract KachToken is Crowdsale, Owned {
     address private _fundKeeperAddress;
     address private _teamAddress;
     address private _reservedAddress;
+    address private _founderAddress;
 
     address[] private _privateInvestorAddresses;
     address[] private _whitelistInvestorAddresses;
@@ -54,46 +54,61 @@ contract KachToken is Crowdsale, Owned {
     bool private foundersTokensAllocated = false;
     bool private advisorTokensAllocated = false;
 
+    uint private _totalTokensAmount = 500000000;
+
     modifier onlyContractActivated() {
-        require(_contractOwner == true);
+        require(_contractActivated == true);
         _;
     }
 
     modifier onlyTokenTransferEnabled() {
-        require(_tokenTransferEnabled);
+        require(_tokenTransferEnabled == true);
         _;
     }
 
-    // Construction function
-    constructor() public onlyOwner {
-        _contractOwner = msg.sender;
-        _totalSupply = 500000000;
-        symbol = "KHT";
-        name = "KachToken";
-        decimals = 18;
+    function checkContractBalance() public view returns (uint) {
+        return address(this).balance;
+    }
 
-        _mint(_contractOwner, _totalSupply);
+    // Construction function
+    constructor() Crowdsale() public payable {
+        _contractOwnerAddress = msg.sender;
+        _mint(_contractOwnerAddress, _totalTokensAmount);
     }
 
     // Payable function to distribute token
-    function() external payable onlyContractActivated onlyTokenTransferEnabled {
+    function() external payable onlyContractActivated onlyTokenTransferEnabled  {
         uint weiAmount = msg.value;
         _issueToken(msg.sender, weiAmount);
     }
 
-    // Get current state of sales campaign
-    function getCurrentState() public {
+    function activateEverything() public {
+        _tokenTransferEnabled = true;
+        _contractActivated = true;
+        _isPrivateSaleNow = true;
+        _isPreSaleNow = true;
+        _icoStarted = true;
+    }
 
+    // Get current state of sales campaign
+    function getCurrentState() public pure returns (bool) {
+        return true;
     }
 
     // To track invested amount of Ether of investors not competed KYC
-    function _trackdownInvestedEther() private returns (uint256) {
-
+    function _trackdownInvestedEther() private view returns (uint256) {
+        uint256 _totalBalance = 0;
+        for (uint256 i = 0; i < othersAddresses.length; i++) {
+            _totalBalance = _totalBalance.add(others[othersAddresses[i]]);
+        }
+        return _totalBalance;
     }
 
     // Payable to revoke token
     function revokeToken() public payable onlyOwnerAdmin {
-
+        for (uint i = 0; i < othersAddresses.length; i++) {
+            balance[othersAddresses[i]] = 0;
+        }
     }
 
     // To activate contract
@@ -160,12 +175,13 @@ contract KachToken is Crowdsale, Owned {
     // To move all tokens remaining after ICO to external address
     function moveAllAvailableToken(address _newAddress) public onlyOwnerAdmin {
         require(_newAddress != address(0));
-        remainingTokens = _totalSupply.sub(balanceOf[_contractOwner]);
+        uint remainingTokens = _totalTokensAmount.sub(balanceOf(_contractOwnerAddress));
         _approveAndTransfer(_newAddress, remainingTokens);
     }
 
     // To allocate reserved token to external address
     function allocateReservedToken() public onlyOwnerAdmin {
-
+        require(_reservedAddress != address(0));
+        _approveAndTransfer(_reservedAddress, _reservedTokensAmount);
     }
 }
